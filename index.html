@@ -526,6 +526,7 @@ h1 em{
 <body>
 
 <canvas id="fx"></canvas>
+<audio id="bgm" loop preload="auto"></audio>
 <button id="snd" aria-label="Toggle sound">♪</button>
 
 <main id="stage">
@@ -683,6 +684,8 @@ const CONFIG = {
   name: "Yashu",                    // shown big on screen
   sealLetter: "Y",                  // letter on the wax seal
 
+  music: "song.mp3",                // background song — put an mp3 with this name next to index.html (leave "" for no music)
+
   greetLine: "Happy birthday, Yashu. I made this whole little world just for you. Ready?",
 
   // The four words hidden in the balloons
@@ -721,12 +724,27 @@ const CONFIG = {
    ══════════════════════════════════════════════════════════════════ */
 
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let sound = true;
 
 /* ---------- inject config ---------- */
 document.querySelector('.seal').textContent = CONFIG.sealLetter;
 document.getElementById('greetLine').textContent = CONFIG.greetLine;
 document.getElementById('finaleLine').textContent = CONFIG.finaleLine;
 document.title = `For ${CONFIG.name} 🤍`;
+
+/* background music */
+const bgm = document.getElementById('bgm');
+if(CONFIG.music){ bgm.src = CONFIG.music; bgm.volume = 0; }
+let musicStarted = false;
+function startMusic(){
+  if(musicStarted || !CONFIG.music || !sound) return;
+  bgm.play().then(()=>{
+    musicStarted = true;
+    // fade in gently
+    let v = 0;
+    const fade = setInterval(()=>{ v = Math.min(.45, v + .03); bgm.volume = v; if(v>=.45) clearInterval(fade); }, 90);
+  }).catch(()=>{ /* browser blocked it — will retry on next tap */ });
+}
 
 function splitName(el){
   el.innerHTML = [...CONFIG.name].map((ch,i)=>
@@ -779,6 +797,7 @@ document.querySelectorAll('[data-next]').forEach(b=>b.addEventListener('click',(
 const envStage = document.getElementById('envStage');
 function openEnv(){
   if(envStage.classList.contains('open')) return;
+  startMusic();
   envStage.classList.add('open');
   blip(420);
   const r = envStage.getBoundingClientRect();
@@ -1007,13 +1026,14 @@ loop();
 /* ══════════════════════════════════════════════════════════
    SOUND  (synthesised — no audio files needed)
    ══════════════════════════════════════════════════════════ */
-let ac2 = null, sound = true;
+let ac2 = null;
 const sndBtn = document.getElementById('snd');
 sndBtn.addEventListener('click', ()=>{
   sound = !sound;
   sndBtn.textContent = sound ? '♪' : '✕';
   sndBtn.style.color = sound ? '' : '#C7B0B8';
-  if(sound) blip(700);
+  if(sound){ blip(700); if(CONFIG.music){ if(musicStarted){ bgm.play(); bgm.volume = .45; } else { startMusic(); } } }
+  else if(CONFIG.music){ bgm.pause(); }
 });
 function audio(){
   if(!ac2) ac2 = new (window.AudioContext||window.webkitAudioContext)();
